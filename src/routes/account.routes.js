@@ -10,4 +10,17 @@ create a new account and PROTECTED route
 */
 router.post("/",authMiddleware.authMiddleware , accountController.createAccountController)
 
+/**
+ * GET- /api/accounts
+ * get all accounts of the logged-in user
+ * Protected Route
+ */
+router.get("/",authMiddleware.authMiddleware , accountController.getUserAccountsController)
+
+
+/**
+ * GET- /api/accounts/balance/:accountId
+ */
+router.get("/balance/:accountId",authMiddleware.authMiddleware , accountController.getBalanceAccountController)
+
 module.exports=router;

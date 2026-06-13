@@ -25,10 +25,10 @@ async function createTransaction(req,res){
     /**
      * 1. Validate request
      */
-  const{fromAccount , toAccount ,amount, idemptencyKey}= req.body;
+  const{fromAccount , toAccount ,amount, idempotencyKey}= req.body;
   
   //agr in chaar m se ek b property req.body k andr nhi ayi iska mtlb user ki glti h, server aage ka process nhi kr skta
-   if(!fromAccount || !toAccount || !amount || !idemptencyKey){
+   if(!fromAccount || !toAccount || !amount || !idempotencyKey){
    return res.status(400).json({
     message:"fromAccount, toAccount, amount and idempotencyKey is required"
    })
@@ -52,7 +52,7 @@ async function createTransaction(req,res){
     * 2. Validate idempotency key
    */
    const isTransactionAlreadyExists= await transactionModel.findOne({
-    idempotencyKey:idemptencyKey
+    idempotencyKey:idempotencyKey
    })
 
    if(isTransactionAlreadyExists){
@@ -86,7 +86,7 @@ async function createTransaction(req,res){
   /*
   * 4. Derive sender balance from ledger
   */
- const balanceData= await fromUserAccount.getBalance()
+ const balance= await fromUserAccount.getBalance()
 
  if(balance< amount){
     return res.status(400).json({
@@ -95,37 +95,55 @@ async function createTransaction(req,res){
  /**
   * 5. Create transaction (PENDING)
   */
+      try{
      const session= await mongoose.startSession()
      session.startTransaction()  //yha se jo hoga ya to poora hoga vrna step 5th se vps sb strt hoga
 
-     const transaction =await transactionModel.create({
+     const transaction =(await transactionModel.craete([{
      fromAccount,
      toAccount,
      amount,
      idempotencyKey,
      status:"PENDING"
-     },{session})
+     }],{session}))[0]
 
-     const debitLedgerEntry= await ledgerModel.create({
+     const debitLedgerEntry= await ledgerModel.create([{
         acount:fromAccount,
         amount:amount,
         transaction:transaction._id,
         type:"DEBIT"
-     },{ session})
+     }],{ session})
 
-     const creditLedgerEntry= await ledgerModel.create({
+     await(()=>{
+      return new Promise((resolve)=>setTimeout(resolve, 15 * 1000));
+     })()
+
+     const creditLedgerEntry= await ledgerModel.create([{
         acount:toAccount,
         amount:amount,
         transaction:transaction._id,
         type:"CREDIT"
-     },{ session})
+     }],{ session})
 
-     transaction.status="COMPLETED"
-     await transaction.save({session})
+     await transactionModel.findOneAndUpdate(
+      { _id:transaction._id},
+      {status: "COMPLETED"},
+      { session}
+     )
 
      await session.commitTransaction()
      session.endSession()
-
+   }
+   catch(error){
+     await transactionModel.findOneAndUpdate(
+      {idempotencyKey:idempotencyKey},
+      {status:"FAILED"}
+     )
+     return res.status(500).json({
+      message:"transaction failed due to internal error",
+      error:error.message
+     })
+   }
      /**
       *  10. Send email notification
       */

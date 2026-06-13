@@ -1,5 +1,6 @@
 const userModel=require("../models/user.model")
 const jwt=require("jsonwebtoken")
+const tokenBlackListModel=require("../models/blackList.model")
 
 //check: user logged in hai ya nhi through token, token can be present in cookie or header, check in both
 async function authMiddleware(req,res,next){
@@ -9,6 +10,12 @@ async function authMiddleware(req,res,next){
     return res.status(401).json ({
         message:"Unauthorized acccess, token is missing"
     })
+   }
+
+   const isBlackListed= await tokenBlackListModel.findOne({token})
+
+   if(isBlackListed){
+    return res.status(401).json({message:"Unauthorized access, token is invalid"})
    }
    try{
     const decoded=jwt.verify(token,process.env.JWT_SECRET)
@@ -31,6 +38,11 @@ async function authSystemUserMiddleware(req,res,next){
         message: "Unauthorized access, token is missing"
     });
 }
+ const isBlackListed= await tokenBlackListModel.findOne({token})
+
+   if(isBlackListed){
+    return res.status(401).json({message:"Unauthorized access, token is invalid"})
+   }
 try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
