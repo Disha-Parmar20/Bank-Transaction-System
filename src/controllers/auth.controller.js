@@ -1,5 +1,7 @@
 const userModel=require("../models/user.model")
 const jwt=require("jsonwebtoken")
+const emailService= require("../services/email.service")
+
 /*
 user Register controller
 POST- /api/auth/register
@@ -68,6 +70,8 @@ POST- api/auth/login
     },
     token
     })
+
+    await emailService.sendRegistrationEmail(user.email, user.name)
  }
 
 module.exports={userRegisterController, userLoginController}

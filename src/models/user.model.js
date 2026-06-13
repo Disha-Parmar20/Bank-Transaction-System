@@ -19,6 +19,12 @@ const userSchema=new mongoose.Schema({
         required:[true,"password is required for creating an account"],
         minlength:[6,"password should contain more than 6 character"],
         select: false //pswrd will not share if query is asked to share the details (until asked)
+    },
+    systemUser:{
+      type:Boolean,
+      default:false,
+      immutable:true,
+      select: false
     }
     },
    { timestamps: true  }//user ka data last time kb update kiya th
